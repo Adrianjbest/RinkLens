@@ -14759,23 +14759,17 @@ final class HockeyScoreboardViewModel: ObservableObject {
         func player(_ team: Team, _ slot: Int) -> Int? {
             acceptedPenalties.first { $0.team == team && $0.slot == slot }?.playerNumber
         }
-        var acceptedState = state
-        acceptedState.homePenalty1Player = player(.home, 1)
-        acceptedState.homePenalty1Clock = nil
-        acceptedState.homePenalty2Player = player(.home, 2)
-        acceptedState.homePenalty2Clock = nil
-        acceptedState.awayPenalty1Player = player(.away, 1)
-        acceptedState.awayPenalty1Clock = nil
-        acceptedState.awayPenalty2Player = player(.away, 2)
-        acceptedState.awayPenalty2Clock = nil
         let reduction = reduceMatchState(
-            .replace(
-                acceptedState,
+            .setPenaltySnapshot(
+                home1: player(.home, 1),
+                home2: player(.home, 2),
+                away1: player(.away, 1),
+                away2: player(.away, 2),
                 context: RinkLensMatchStateContext(
                     origin: .ocr,
                     eventPolicy: [],
                     diagnosticsOnly: false,
-                    reason: "Recovery EB accepted Image Relay physical penalty-pair snapshot"
+                    reason: "Recovery EC accepted Image Relay physical penalty-pair snapshot"
                 )
             )
         )

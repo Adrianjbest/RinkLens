@@ -129,6 +129,15 @@ enum RinkLensMatchStateAction {
         clock: String?,
         context: RinkLensMatchStateContext
     )
+    /// Recovery EC: one accepted Image Relay penalty observation owns all four
+    /// player slots atomically without becoming a whole-scoreboard replacement.
+    case setPenaltySnapshot(
+        home1: Int?,
+        home2: Int?,
+        away1: Int?,
+        away2: Int?,
+        context: RinkLensMatchStateContext
+    )
     case registerPenalty(team: Team, seconds: Int, context: RinkLensMatchStateContext)
     case clearPenalties(context: RinkLensMatchStateContext)
 
@@ -143,6 +152,7 @@ enum RinkLensMatchStateAction {
              .setPeriod(_, _, let context),
              .setShots(_, _, let context),
              .setPenalty(_, _, _, let context),
+             .setPenaltySnapshot(_, _, _, _, let context),
              .registerPenalty(_, _, let context),
              .clearPenalties(let context):
             return context
@@ -160,6 +170,7 @@ enum RinkLensMatchStateAction {
         case .setPeriod: return "setPeriod"
         case .setShots: return "setShots"
         case .setPenalty: return "setPenalty"
+        case .setPenaltySnapshot: return "setPenaltySnapshot"
         case .registerPenalty: return "registerPenalty"
         case .clearPenalties: return "clearPenalties"
         }
@@ -171,7 +182,7 @@ enum RinkLensMatchStateAction {
         switch self {
         case .replace, .applyAcceptedOCR, .setScores, .adjustScore:
             return true
-        case .setTeams, .setClock, .setPeriod, .setShots, .setPenalty, .registerPenalty, .clearPenalties:
+        case .setTeams, .setClock, .setPeriod, .setShots, .setPenalty, .setPenaltySnapshot, .registerPenalty, .clearPenalties:
             return false
         }
     }
@@ -271,6 +282,16 @@ enum RinkLensMatchStateReducer {
 
         case .setPenalty(let slot, let player, let clock, _):
             applyPenalty(slot: slot, player: player, clock: clock, to: &next)
+
+        case .setPenaltySnapshot(let home1, let home2, let away1, let away2, _):
+            // All four physical player slots are one semantic observation. Apply
+            // them inside a single reducer transaction so score/clock/period can
+            // never be copied from a stale snapshot and no intermediate penalty
+            // arrangement is visible to the scorebug or popup coordinator.
+            applyPenalty(slot: .home1, player: home1, clock: nil, to: &next)
+            applyPenalty(slot: .home2, player: home2, clock: nil, to: &next)
+            applyPenalty(slot: .away1, player: away1, clock: nil, to: &next)
+            applyPenalty(slot: .away2, player: away2, clock: nil, to: &next)
 
         case .registerPenalty(let team, let seconds, _):
             registerPenalty(team: team, seconds: seconds, in: &next)
