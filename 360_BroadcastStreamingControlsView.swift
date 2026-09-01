@@ -223,7 +223,7 @@ struct BroadcastStreamingControlsView: View {
         VStack(alignment: .leading, spacing: 9) {
             if streamIsPublishing {
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
+                    Image(systemName: "dot.radiowaves.left.and.right")
                     Text(primaryStreamActionTitle)
                 }
                 .font(RinkLensDesignSystem.font(.bodyStrong))
@@ -231,8 +231,24 @@ struct BroadcastStreamingControlsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(Color.green, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(Color.white.opacity(0.34), lineWidth: 1)
+                )
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("RinkLens is live")
+            } else if streamIsDegraded {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text("STREAM DEGRADED")
+                }
+                .font(RinkLensDesignSystem.font(.bodyStrong))
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.orange, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("RinkLens stream degraded")
             } else {
                 Button {
                     onStartInApp?()
@@ -241,9 +257,9 @@ struct BroadcastStreamingControlsView: View {
                         if streamStartupInProgress {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(.white)
+                                .tint(.black)
                         } else {
-                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Image(systemName: "play.fill")
                         }
                         Text(primaryStreamActionTitle)
                     }
@@ -252,7 +268,8 @@ struct BroadcastStreamingControlsView: View {
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.cyan)
+                .tint(streamStartupInProgress ? .orange : .cyan)
+                .foregroundStyle(streamStartupInProgress ? .black : .white)
                 .disabled(!destinationStore.isReadyForBroadcastFlow || onStartInApp == nil || controlStore.requestedStateActive)
                 .accessibilityLabel(primaryStreamActionTitle)
             }
@@ -290,6 +307,7 @@ struct BroadcastStreamingControlsView: View {
 
     private var startSubtitle: String {
         if streamIsPublishing { return "YouTube has accepted RinkLens programme media — use Stop Stream below to finish" }
+        if streamIsDegraded { return controlStore.healthMessageText }
         if streamStartupInProgress { return "Go Live was received — connecting and waiting for the first accepted programme media" }
         if !destinationStore.isReadyForBroadcastFlow { return "Fix configuration warnings before starting" }
         if onStartInApp == nil { return "Open Broadcast to start the RinkLens programme stream" }
@@ -299,6 +317,10 @@ struct BroadcastStreamingControlsView: View {
 
     private var streamIsPublishing: Bool {
         controlStore.runtimeState == .publishing
+    }
+
+    private var streamIsDegraded: Bool {
+        controlStore.runtimeState == .connected && controlStore.healthLevel == .warning
     }
 
     private var primaryStreamActionTitle: String {
@@ -331,6 +353,7 @@ struct BroadcastStreamingControlsView: View {
     private var statusColour: Color {
         switch controlStore.runtimeState {
         case .publishing: return .green
+        case .connected where controlStore.healthLevel == .warning: return .orange
         case .connecting, .connected, .openingPicker: return .cyan
         case .stopRequested: return .yellow
         case .failed: return .orange
