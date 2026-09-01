@@ -1872,7 +1872,7 @@ private struct BroadcastZoomPresetControls: View {
 
     private var minZoom: CGFloat { viewModel.effectiveBroadcastZoomRange.lowerBound }
     private var maxZoom: CGFloat { viewModel.effectiveBroadcastZoomRange.upperBound }
-    private var sliderHeight: CGFloat { 300 }
+    private var sliderHeight: CGFloat { 420 }
 
     private var shownZoom: CGFloat {
         // Recovery DB: outside an active finger drag the control displays verified
@@ -2010,6 +2010,7 @@ private struct BroadcastZoomPresetControls: View {
                     }
                 ),
                 in: Double(minZoom)...Double(maxZoom),
+                step: Double(BroadcastZoomGranularity.sliderStep),
                 onEditingChanged: { editing in
                     isDraggingZoomSlider = editing
                     if editing {
