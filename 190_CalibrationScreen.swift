@@ -284,8 +284,22 @@ nonisolated private final class OCRFrameHubPreviewRenderer: @unchecked Sendable 
     private func submit(_ evidence: RinkLensFrameHubEvidence) {
         lock.lock()
         guard isActive else { lock.unlock(); return }
-        let expectedGeneration = self.expectedGeneration
+        var expectedGeneration = self.expectedGeneration
         let expectedDeviceID = self.expectedDeviceID
+
+        // Recovery EC: CaptureEngine's presentation snapshot can lag a branch-only
+        // OCR reattach even though FrameHub is already receiving healthy frames
+        // from the same physical OCR camera. In that case the old generation
+        // fence made Calibration permanently black (for example expected 12 while
+        // FrameHub was current at 15). A newer frame from the expected device is
+        // authoritative pixel evidence, so advance only the preview fence. This
+        // never starts/reconfigures capture and never accepts another device.
+        if evidence.captureGeneration > expectedGeneration,
+           expectedDeviceID == nil || evidence.physicalDeviceID == expectedDeviceID {
+            expectedGeneration = evidence.captureGeneration
+            self.expectedGeneration = expectedGeneration
+        }
+
         guard evidence.captureGeneration == expectedGeneration,
               expectedDeviceID == nil || evidence.physicalDeviceID == expectedDeviceID else {
             lock.unlock()
